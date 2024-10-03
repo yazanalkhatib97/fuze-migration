@@ -1,6 +1,5 @@
 import fs from "fs";
 import { parse } from "csv-parse";
-import { stringify } from "csv-stringify";
 import { Sequelize, DataTypes, Op } from "sequelize";
 
 const sequelize = new Sequelize("verceldb", "default", "UnNTsacBbd23", {
@@ -106,28 +105,6 @@ const User = sequelize.define(
     console.error("Unable to connect to the database:", error);
   }
 })();
-
-// Parse csv file and return data
-const readCSV = (filePath) => {
-  return new Promise((resolve) => {
-    fs.readFile(filePath, "utf8", (err, data) => {
-      if (err) {
-        console.error(`Error reading the file: ${err.message}`);
-        return;
-      }
-
-      // Parse the CSV data
-      parse(data, { columns: true }, (err, records) => {
-        if (err) {
-          console.error(`Error parsing CSV data: ${err.message}`);
-          return;
-        }
-
-        resolve(records);
-      });
-    });
-  });
-};
 
 // (async () => {
 //   const postgresDbArr = await readCSV("output.csv");

@@ -4,8 +4,7 @@ import fs from "fs";
 import https from "https";
 import FormData from "form-data";
 import { client } from "./datacmsClient";
-import { stringify } from "csv-stringify";
-import { exportToCSV } from "./utils/exportCSV";
+import { exportToCSV, readCSV } from "./utils/exportCSV";
 
 dotenv.config();
 
@@ -17,33 +16,9 @@ const CONSTANTS = {
   datoCMSAPI: "67d5a313982042726364c7d2f1981d",
 };
 
-// Array of video objects (id and video_url)
-const videos = [
-  {
-    id: "fEZhjBF8QbKfhkgU7IEfog",
-    video_url:
-      "https://video-cdn.fuze.us/gHI55KpGQbWVqTjAfBleRCXHnlm2/video-1726822473676-gHI55KpGQbWVqTjAfBleRCXHnlm2",
-  },
-  {
-    id: "F-VEY0MATfG9E4ot9YRP7w",
-    video_url:
-      "https://video-cdn.fuze.us/gHI55KpGQbWVqTjAfBleRCXHnlm2/video-1716542861353-gHI55KpGQbWVqTjAfBleRCXHnlm2",
-  },
-  {
-    id: "Ua4Cu5QsTzGtSRUmOd7lZg",
-    video_url:
-      "https://video-cdn.fuze.us/gHI55KpGQbWVqTjAfBleRCXHnlm2/video-1716297396751-gHI55KpGQbWVqTjAfBleRCXHnlm2",
-  },
-  {
-    id: "DDoKHQrGT7euo1ZN6I2RFw",
-    video_url:
-      "https://video-cdn.fuze.us/gHI55KpGQbWVqTjAfBleRCXHnlm2/video-1716294896914-gHI55KpGQbWVqTjAfBleRCXHnlm2",
-  },
-];
-
 // Function to download a video from a URL
-async function downloadVideo(url, index) {
-  console.log(`[${index + 1}/${videos.length}] Downloading video: ${url}`);
+async function downloadVideo(url, index, length) {
+  console.log(`[${index + 1}/${length}] Downloading video: ${url}`);
   const path = url.split("/").pop();
   const writer = fs.createWriteStream(path + ".mp4");
 
@@ -55,7 +30,7 @@ async function downloadVideo(url, index) {
       writer.on("finish", () => {
         const end = new Date();
         console.log(
-          `[${index + 1}/${videos.length}] Download completed in ${
+          `[${index + 1}/${length}] Download completed in ${
             // @ts-ignore
             (end - start) / 1000
           } seconds.`
@@ -68,8 +43,8 @@ async function downloadVideo(url, index) {
 }
 
 // Function to upload video to SproutVideo
-async function uploadToSproutVideo(filePath, index) {
-  console.log(`[${index + 1}/${videos.length}] Uploading video to SproutVideo`);
+async function uploadToSproutVideo(filePath, index, length) {
+  console.log(`[${index + 1}/${length}] Uploading video to SproutVideo`);
 
   if (!fs.existsSync(filePath)) {
     console.error(`File not found: ${filePath}`);
@@ -99,7 +74,7 @@ async function uploadToSproutVideo(filePath, index) {
 
     const end = new Date();
     console.log(
-      `[${index + 1}/${videos.length}] Upload completed in ${
+      `[${index + 1}/${length}] Upload completed in ${
         // @ts-ignore
 
         (end - start) / 1000
@@ -152,11 +127,19 @@ async function updateVideoUrl(itemId, newVideoUrl) {
 // Process all videos
 async function processVideos() {
   const result = [];
+  const videos = (await readCSV(
+    "./data/Video Migration 2024 - SproutVideo and Maximus - get_it_done.csv"
+  )) as any;
+
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i];
     try {
-      const filePath = await downloadVideo(video.video_url, i);
-      const newVideoUrl = await uploadToSproutVideo(filePath + ".mp4", i);
+      const filePath = await downloadVideo(video.video_url, i, videos?.length);
+      const newVideoUrl = await uploadToSproutVideo(
+        filePath + ".mp4",
+        i,
+        videos?.length
+      );
       // await updateVideoUrl(video.id, newVideoUrl);
 
       result.push({ id: video.id, url: video.video_url, new_url: newVideoUrl });
