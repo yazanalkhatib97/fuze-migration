@@ -1,52 +1,53 @@
 import dotenv from "dotenv";
 import axios from "axios";
-import fs from "fs";
-import https from "https";
+// import fs from "fs";
+// import https from "https";
+// import { client } from "./datacmsClient";
 import FormData from "form-data";
-import { client } from "./datacmsClient";
 import { exportToCSV, readCSV } from "./utils/exportCSV";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 dotenv.config();
 
+const s3Client = new S3Client({
+  region: "eu-west-2",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
+
 // Function to download a video from a URL
-async function downloadVideo(url, index, length) {
-  console.log(`[${index + 1}/${length}] Downloading video: ${url}`);
+// async function downloadVideo(url, index, length) {
+//   console.log(`[${index + 1}/${length}] Downloading video: ${url}`);
 
-  const path = url.split("/").pop();
-  const writer = fs.createWriteStream(path + ".mp4");
+//   const path = url.split("/").pop();
+//   const writer = fs.createWriteStream(path + ".mp4");
 
-  const start = new Date();
-  // return path;
-  return new Promise((resolve, reject) => {
-    https.get(url, function (response) {
-      response.pipe(writer);
-      writer.on("finish", () => {
-        const end = new Date();
-        console.log(
-          `[${index + 1}/${length}] Download completed in ${
-            // @ts-ignore
-            (end - start) / 1000
-          } seconds.`
-        );
-        resolve(path);
-      });
-      writer.on("error", reject);
-    });
-  });
-}
+//   const start = new Date();
+//   // return path;
+//   return new Promise((resolve, reject) => {
+//     https.get(url, function (response) {
+//       response.pipe(writer);
+//       writer.on("finish", () => {
+//         const end = new Date();
+//         console.log(
+//           `[${index + 1}/${length}] Download completed in ${
+//             // @ts-ignore
+//             (end - start) / 1000
+//           } seconds.`
+//         );
+//         resolve(path);
+//       });
+//       writer.on("error", reject);
+//     });
+//   });
+// }
+
+// Create a new instance of the S3 class
 
 // Function to upload video to SproutVideo
 async function uploadToSproutVideo(filePath, index, length) {
-  // Create a new instance of the S3 class
-  const s3Client = new S3Client({
-    region: "eu-west-2",
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    },
-  });
-
   const key = filePath.split(".us/")[1]; // Split the URL at '.us/' and take the second part
 
   const params = {
@@ -80,6 +81,7 @@ async function uploadToSproutVideo(filePath, index, length) {
         ...formData.getHeaders(),
         "SproutVideo-Api-Key": process.env.SPROUT_VIDEO_API_KEY,
       },
+      maxBodyLength: Infinity, // Allow large video uploads
       // Track upload progress
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round(
@@ -127,26 +129,26 @@ async function uploadToSproutVideo(filePath, index, length) {
 }
 
 // Function to update the video URL in DatoCMS
-async function updateVideoUrl(itemId, newVideoUrl) {
-  console.log(`Updating DatoCMS entry for item ID: ${itemId}`);
+// async function updateVideoUrl(itemId, newVideoUrl) {
+//   console.log(`Updating DatoCMS entry for item ID: ${itemId}`);
 
-  try {
-    const response = await client.items.update(itemId, {
-      // Assuming 'en' as the locale, replace 'en' with appropriate locale codes if different
-      videoUrl: {
-        en: newVideoUrl,
-      },
-    });
+//   try {
+//     const response = await client.items.update(itemId, {
+//       // Assuming 'en' as the locale, replace 'en' with appropriate locale codes if different
+//       videoUrl: {
+//         en: newVideoUrl,
+//       },
+//     });
 
-    console.log({ response });
-  } catch (error) {
-    console.error(
-      `Failed to update DatoCMS entry: ${
-        error.response ? error.response.data : error
-      }`
-    );
-  }
-}
+//     console.log({ response });
+//   } catch (error) {
+//     console.error(
+//       `Failed to update DatoCMS entry: ${
+//         error.response ? error.response.data : error
+//       }`
+//     );
+//   }
+// }
 
 // Process all videos
 async function processVideos() {
