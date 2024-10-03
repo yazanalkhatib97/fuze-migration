@@ -1,6 +1,6 @@
 import fs from "fs";
 import { parse } from "csv-parse";
-import { stringify } from "csv-stringify";
+import { exportToCSV } from "./utils/exportCSV";
 
 const readCSV = (filePath) => {
   return new Promise((resolve) => {
@@ -26,19 +26,17 @@ const readCSV = (filePath) => {
 const result = [];
 
 (async () => {
-  const uScreen = await readCSV("./data/uscreen-active-users-edited.csv");
+  const uScreen = (await readCSV(
+    "./data/uscreen-active-users-edited.csv"
+  )) as any;
 
-  uScreen.forEach((record) => {
+  uScreen?.forEach((record) => {
     if (record.subscriptionPlan === "3 month challenge 🔥") result.push(record);
   });
 
   console.log({
     result: result.length,
   });
-
-  const outputStream = fs.createWriteStream(
-    "./data/uscreen-active-3-monthly-challenge-users.csv"
-  );
 
   const columns = {
     Id: "Id",
@@ -47,21 +45,9 @@ const result = [];
     subscriptionPlan: "subscriptionPlan",
   };
 
-  // Stringify the data
-  stringify(
-    result,
-    {
-      header: true, // Include header row
-      columns: columns, // Use defined columns for order and header names
-    },
-    (err, output) => {
-      if (err) {
-        console.error("Error stringifying data:", err);
-        return;
-      }
-      // Write the CSV content to the file
-      outputStream.write(output);
-      outputStream.end();
-    }
+  exportToCSV(
+    "./data/uscreen-active-3-monthly-challenge-users.csv",
+    columns,
+    result
   );
 })();

@@ -1,9 +1,11 @@
 import dotenv from "dotenv";
-import { client } from "./datacmsClient";
 import axios from "axios";
 import fs from "fs";
 import https from "https";
 import FormData from "form-data";
+import { client } from "./datacmsClient";
+import { stringify } from "csv-stringify";
+import { exportToCSV } from "./utils/exportCSV";
 
 dotenv.config();
 
@@ -138,13 +140,6 @@ async function updateVideoUrl(itemId, newVideoUrl) {
     });
 
     console.log({ response });
-    // console.log(
-    //   `[${
-    //     index + 1
-    //   }/${videosLength}] DatoCMS entry updated successfully. New URL: ${
-    //     item.videoUrl
-    //   }`
-    // ); // Changed to camelCase
   } catch (error) {
     console.error(
       `Failed to update DatoCMS entry: ${
@@ -156,17 +151,27 @@ async function updateVideoUrl(itemId, newVideoUrl) {
 
 // Process all videos
 async function processVideos() {
+  const result = [];
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i];
     try {
-      console.log(video.video_url);
       const filePath = await downloadVideo(video.video_url, i);
       const newVideoUrl = await uploadToSproutVideo(filePath + ".mp4", i);
       // await updateVideoUrl(video.id, newVideoUrl);
+
+      result.push({ id: video.id, url: video.video_url, new_url: newVideoUrl });
     } catch (error) {
       console.error(`Error processing video ${video.id}:`, error);
     }
   }
+
+  const columns = {
+    id: "id",
+    url: "url",
+    new_url: "new_url",
+  };
+
+  exportToCSV("./data/sproutvideos.csv", columns, result);
 }
 
 // Run the processing function

@@ -1,8 +1,8 @@
-const stytch = require("stytch");
-const fs = require("fs");
+import fs from "fs";
 import { parse } from "csv-parse";
+import { exportToCSV } from "./utils/exportCSV";
 
-const { stringify } = require("csv-stringify");
+const stytch = require("stytch");
 
 const client = new stytch.Client({
   project_id: "project-live-cfed3b4d-e47a-49d1-9652-3812cde51f74",
@@ -72,8 +72,6 @@ const readCSV = (filePath) => {
 
   console.log("Unmatched records:", unmatched.length);
 
-  const outputStream = fs.createWriteStream("./data/output.csv");
-
   const columns = {
     Id: "Id",
     name: "name",
@@ -81,21 +79,5 @@ const readCSV = (filePath) => {
     subscriptionPlan: "subscriptionPlan",
   };
 
-  // Stringify the data
-  stringify(
-    unmatched,
-    {
-      header: true, // Include header row
-      columns: columns, // Use defined columns for order and header names
-    },
-    (err, output) => {
-      if (err) {
-        console.error("Error stringifying data:", err);
-        return;
-      }
-      // Write the CSV content to the file
-      outputStream.write(output);
-      outputStream.end();
-    }
-  );
+  exportToCSV("./data/output.csv", columns, unmatched);
 })();
