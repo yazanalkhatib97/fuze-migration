@@ -155,7 +155,7 @@ async function processVideos() {
     "./data/Video Migration 2024 - SproutVideo and Maximus - get_it_done.csv"
   )) as any;
 
-  for (let i = 50; i < videos.length; i++) {
+  for (let i = 54; i < videos.length; i++) {
     const video = videos[i];
     try {
       // const filePath = await downloadVideo(video.video_url, i, videos?.length);
