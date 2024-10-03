@@ -5,20 +5,14 @@ import https from "https";
 import FormData from "form-data";
 import { client } from "./datacmsClient";
 import { exportToCSV, readCSV } from "./utils/exportCSV";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 dotenv.config();
-
-// Constants for API and environment variables
-const CONSTANTS = {
-  sproutVideoAPI: "8d194fd0fddba7488960a3a271562273",
-  sproutVideoURL: "https://api.sproutvideo.com/v1/videos",
-  sproutVideoFolderID: "4a9fdfb4191de6c4",
-  datoCMSAPI: "67d5a313982042726364c7d2f1981d",
-};
 
 // Function to download a video from a URL
 async function downloadVideo(url, index, length) {
   console.log(`[${index + 1}/${length}] Downloading video: ${url}`);
+
   const path = url.split("/").pop();
   const writer = fs.createWriteStream(path + ".mp4");
 
@@ -44,31 +38,61 @@ async function downloadVideo(url, index, length) {
 
 // Function to upload video to SproutVideo
 async function uploadToSproutVideo(filePath, index, length) {
-  console.log(`[${index + 1}/${length}] Uploading video to SproutVideo`);
+  // Create a new instance of the S3 class
+  const s3Client = new S3Client({
+    region: "eu-west-2",
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
+  });
 
-  if (!fs.existsSync(filePath)) {
-    console.error(`File not found: ${filePath}`);
-    return;
+  const key = filePath.split(".us/")[1]; // Split the URL at '.us/' and take the second part
+
+  const params = {
+    Bucket: "fuze-videos", // Replace with your S3 bucket name
+    Key: key,
+  };
+
+  const s3Stream = await s3Client.send(new GetObjectCommand(params));
+
+  let filename = filePath.split("/").pop(); // Extracts the filename from the URL
+  if (!filename.endsWith(".mp4")) {
+    filename += ".mp4"; // Append .mp4 if not present
   }
 
-  const fileStream = fs.createReadStream(filePath);
-  const filename = filePath.split("/").pop(); // Extracts the filename from the URL
-
+  console.log(
+    `[${index + 1}/${length}] Uploading video ${filename} to SproutVideo`
+  );
   const formData = new FormData();
   // @ts-ignore
-  formData.append("file", fileStream, { filename: filename });
+  formData.append("file", s3Stream.Body, { filename: filename });
   formData.append("title", `${filename}`);
   formData.append("folder_id", "4a9fdfb4191de6c4");
   formData.append("tag_names", "GetItDoneFitness");
 
-  // return filename;
-
   const start = new Date();
+  let previousPercentage = 0;
+
   try {
-    const { data } = await axios.post(CONSTANTS.sproutVideoURL, formData, {
+    const { data } = await axios.post(process.env.SPROUT_VIDEO_URL, formData, {
       headers: {
         ...formData.getHeaders(),
-        "SproutVideo-Api-Key": CONSTANTS.sproutVideoAPI,
+        "SproutVideo-Api-Key": process.env.SPROUT_VIDEO_API_KEY,
+      },
+      // Track upload progress
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        );
+
+        // Only print progress if it has changed
+        if (percentCompleted > previousPercentage) {
+          console.log(
+            `[${index + 1}/${length}] Upload progress: ${percentCompleted}%`
+          );
+          previousPercentage = percentCompleted;
+        }
       },
     });
 
@@ -78,9 +102,8 @@ async function uploadToSproutVideo(filePath, index, length) {
         // @ts-ignore
 
         (end - start) / 1000
-      } seconds. Deleting local file.`
+      } seconds.`
     );
-    fs.unlinkSync(filePath); // Remove file after upload
 
     // Use a regular expression to extract the src value
     const regex = /src='(.*?)'/;
@@ -94,6 +117,7 @@ async function uploadToSproutVideo(filePath, index, length) {
       console.log("No src attribute found");
     }
   } catch (error) {
+    console.log(error?.message, error?.response?.data);
     console.error(
       `Failed to upload video due to: ${
         error.response ? error.response.data : error.message
@@ -134,9 +158,9 @@ async function processVideos() {
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i];
     try {
-      const filePath = await downloadVideo(video.video_url, i, videos?.length);
+      // const filePath = await downloadVideo(video.video_url, i, videos?.length);
       const newVideoUrl = await uploadToSproutVideo(
-        filePath + ".mp4",
+        video.video_url,
         i,
         videos?.length
       );

@@ -5,8 +5,8 @@ import { exportToCSV } from "./utils/exportCSV";
 const stytch = require("stytch");
 
 const client = new stytch.Client({
-  project_id: "project-live-cfed3b4d-e47a-49d1-9652-3812cde51f74",
-  secret: "secret-live-7FcqPeSLBPDLRKvhNMk00D0PZce3lixqYi4=",
+  project_id: process.env.STYTCH_PROJECT_ID,
+  secret: process.env.STYTCH_PROJECT_SECRET,
   env: stytch.envs.live,
 });
 
