@@ -1,10 +1,8 @@
 import dotenv from "dotenv";
 import axios from "axios";
-// import fs from "fs";
-// import https from "https";
-// import { client } from "./datacmsClient";
 import FormData from "form-data";
-import { exportToCSV, readCSV } from "./utils/exportCSV";
+import { client } from "./datocmsClient";
+import { exportToCSV, readCSV } from "../utils/exportCSV";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 dotenv.config();
@@ -16,35 +14,6 @@ const s3Client = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
-
-// Function to download a video from a URL
-// async function downloadVideo(url, index, length) {
-//   console.log(`[${index + 1}/${length}] Downloading video: ${url}`);
-
-//   const path = url.split("/").pop();
-//   const writer = fs.createWriteStream(path + ".mp4");
-
-//   const start = new Date();
-//   // return path;
-//   return new Promise((resolve, reject) => {
-//     https.get(url, function (response) {
-//       response.pipe(writer);
-//       writer.on("finish", () => {
-//         const end = new Date();
-//         console.log(
-//           `[${index + 1}/${length}] Download completed in ${
-//             // @ts-ignore
-//             (end - start) / 1000
-//           } seconds.`
-//         );
-//         resolve(path);
-//       });
-//       writer.on("error", reject);
-//     });
-//   });
-// }
-
-// Create a new instance of the S3 class
 
 // Function to upload video to SproutVideo
 async function uploadToSproutVideo(filePath, index, length) {
@@ -109,7 +78,7 @@ async function uploadToSproutVideo(filePath, index, length) {
 
     // Use a regular expression to extract the src value
     const regex = /src='(.*?)'/;
-    const match = data.embed_code.match(regex);
+    const match = data.embed_code?.match(regex);
 
     if (match) {
       const srcValue = match[1]; // The first captured group contains the src value
@@ -129,26 +98,24 @@ async function uploadToSproutVideo(filePath, index, length) {
 }
 
 // Function to update the video URL in DatoCMS
-// async function updateVideoUrl(itemId, newVideoUrl) {
-//   console.log(`Updating DatoCMS entry for item ID: ${itemId}`);
+async function updateVideoUrl(itemId, newVideoUrl) {
+  console.log(`Updating DatoCMS entry for item ID: ${itemId}`);
 
-//   try {
-//     const response = await client.items.update(itemId, {
-//       // Assuming 'en' as the locale, replace 'en' with appropriate locale codes if different
-//       videoUrl: {
-//         en: newVideoUrl,
-//       },
-//     });
-
-//     console.log({ response });
-//   } catch (error) {
-//     console.error(
-//       `Failed to update DatoCMS entry: ${
-//         error.response ? error.response.data : error
-//       }`
-//     );
-//   }
-// }
+  try {
+    const response = await client.items.update(itemId, {
+      // Assuming 'en' as the locale, replace 'en' with appropriate locale codes if different
+      videoUrl: {
+        en: newVideoUrl,
+      },
+    });
+  } catch (error) {
+    console.error(
+      `Failed to update DatoCMS entry: ${
+        error.response ? error.response.data : error
+      }`
+    );
+  }
+}
 
 // Process all videos
 async function processVideos() {
@@ -157,7 +124,7 @@ async function processVideos() {
     "./data/Video Migration 2024 - SproutVideo and Maximus - get_it_done.csv"
   )) as any;
 
-  for (let i = 59; i < videos.length; i++) {
+  for (let i = 160; i < videos.length; i++) {
     const video = videos[i];
     try {
       // const filePath = await downloadVideo(video.video_url, i, videos?.length);
